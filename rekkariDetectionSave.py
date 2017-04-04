@@ -35,7 +35,7 @@ class DetectPlate():
         self.plates = None
         self.npPlates = []  #images of plate(s) as array of numpy arrays
 
-    def image2Plate(self):
+    def image2Plates(self):
         self.img = cv2.imread(self.imageFileName)
         self.gray = cv2.cvtColor(self.img.copy(), self.colorConversion)
         rectangles = self.cascade.detectMultiScale(self.gray, self.scaleFactor, self.detectFactor, minSize=self.minSize)
@@ -60,9 +60,10 @@ class DetectPlate():
 
 
     def getGray(self):
-        return self.gray
+        return self.gray.copy()
 
     def showPlates(self):
+        self.image2Plates()
         clone = self.getGray().copy()
         for i, [x,y,w,h] in enumerate(self.plates):
             print("xywh",x,y,w,h)

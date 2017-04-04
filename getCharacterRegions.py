@@ -55,7 +55,7 @@ class GetCharacterRegions():
                 ok.append((x,y,w,h))
         self.regions = ok
 
-    def checkArea(self, minArea=0.02, maxArea=0.2):
+    def checkArea(self, minArea=0.005, maxArea=0.2):
         """letters with too small areas are killed"""
         ok = []
         imageArea = self.imageX * self.imageY
@@ -84,13 +84,9 @@ class GetCharacterRegions():
                 [x1,y1,w1,h1] = region_i
                 [x2,y2,w2,h2] = self.regions[j]
                 if ((abs(x2-x1) < toleranceInPixel) and \
-                    (abs(y2-y1) < toleranceInPixel)):
+                    (abs(y2-y1) < toleranceInPixel) and \
+                            ((w1*h1)<(w2*h2))):
                     delete_i = True
-                    #print("BDEL",j,self.regions[j], min(x1,x2))
-                    regionsAsLists[j][0]=min(x1,x2)
-                    regionsAsLists[j][1]=min(y1,y2)
-                    regionsAsLists[j][2]=max(w1,w2)
-                    regionsAsLists[j][3]=max(h1,h2)
             deletes.append(delete_i)
         ok = []
         for delete, region in zip(deletes, regionsAsLists):
@@ -104,7 +100,7 @@ class GetCharacterRegions():
         self.listOfSixSets = []
         mymin=1-heightCriterium
         mymax=1+heightCriterium
-        print("regions: ", self.regions)
+        #print("regions: ", self.regions)
         for i in range(len(self.regions)):
             heightI=self.regions[i][3]
             sixSet=set([self.regions[i]])
@@ -152,7 +148,7 @@ class GetCharacterRegions():
 
             self.listOfSixLists.append(sorted)
 
-    def checkSixXcloseness(self, minFraction=0.25, maxFraction=0.6):
+    def checkSixXcloseness(self, minFraction=0.25, maxFraction=0.7):
         """check that subsegueent rectangles are close/far enought in x-direction
             if NOT remove the 6-rectangle
             we compare the difference in x-direction of the characters
@@ -183,31 +179,35 @@ class GetCharacterRegions():
         self.listOfSixLists = accepted
 
     def getCurrentSixLists(self):
-        print("current list of list(s)/set(s)")
+        #print("current list of list(s)/set(s)")
         if self.listOfSixLists is None:
             return self.listOfSixSets
         else:
             return self.listOfSixLists
 
-    def writeRectangles(self):
+    def writeIntermediateRectangles(self):
         clone = self.getClone()
         for i, (x,y,w,h) in enumerate(self.regions):
             roi_gray = clone[y:y+h, x:x+w]
             cv2.imwrite(str(i)+'-'+sys.argv[1]+'.tif', roi_gray)
 
 
-        cv2.imshow('clone', clone)
-        while(cv2.waitKey()!=ord('q')):
-            continue
-
     def showIntermediateRectangles(self):
         clone = self.getClone()
         for (x,y,w,h) in self.regions:
             cv2.rectangle(clone,(x,y),(x+w,y+h),(0,255,0),5)
-            roi_gray = clone[y:y+h, x:x+w]
         cv2.imshow('clone', clone)
         while(cv2.waitKey()!=ord('q')):
             continue
+
+    def writeFinalRectangles(self):
+        clone = self.getClone()
+        i=0
+        for candidatePlate in self.listOfSixLists:
+            for (x,y,w,h) in candidatePlate:
+                roi_gray = clone[y:y+h, x:x+w]
+                cv2.imwrite(str(i)+'-'+sys.argv[1]+'.tif', roi_gray)
+                i=i+1
 
     def showFinalRectangles(self):
         clone = self.getClone()
@@ -220,7 +220,7 @@ class GetCharacterRegions():
             continue
 
     def getFinalSixLists(self):
-        """ give current result of character regions for a plate ordered from left to right"""
+        """ give Final result of character regions for a plate ordered from left to right"""
         return self.listOfSixLists
 
 if __name__ == '__main__':
