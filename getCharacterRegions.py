@@ -64,33 +64,37 @@ class GetCharacterRegions():
                 ok.append((x,y,w,h))
         self.regions = ok
 
-    def checkSameness(self, toleranceInPixel=3):
+    def checkSameness(self, toleranceInPixel=None):
         """ if we have almost the same rectange, kill one of them
-            tthe remaining rectangle is as big as possible
+            the remaining rectangle is as big as possible
         """
+        if toleranceInPixel is None:
+            toleranceInPixel = int(round((self.imageX / 7) / 5))  # default tolerance one fifth of one character space
         deletes=[]
+        # we must change list of tuples to list of lists in order to modify an individual rectangle
+        # (tuples are needed for items in sets)
+        regionsAsLists = list(map(list, self.regions))
         for i, region_i in enumerate(self.regions):
             delete_i = False
-            print("A", i, region_i)
+            #print("A", i, region_i,len(self.regions))
             start=i+1
             for j in range(start, len(self.regions)):
+                #print("B",j,self.regions[j])
                 [x1,y1,w1,h1] = region_i
                 [x2,y2,w2,h2] = self.regions[j]
                 if ((abs(x2-x1) < toleranceInPixel) and \
-                    (abs(y2-y1) < toleranceInPixel) and \
-                    (abs(w2-w1) < toleranceInPixel) and \
-                    (abs(h2-h1) < toleranceInPixel)):
+                    (abs(y2-y1) < toleranceInPixel)):
                     delete_i = True
-                    print(self.regions[j][0], min(x1,x2))
-                    self.regions[j][0]=min(x1,x2)
-                    self.regions[j][1]=min(y1,y2)
-                    self.regions[j][2]=max(w1,w2)
-                    self.regions[j][3]=max(h1,h2)
+                    #print("BDEL",j,self.regions[j], min(x1,x2))
+                    regionsAsLists[j][0]=min(x1,x2)
+                    regionsAsLists[j][1]=min(y1,y2)
+                    regionsAsLists[j][2]=max(w1,w2)
+                    regionsAsLists[j][3]=max(h1,h2)
             deletes.append(delete_i)
         ok = []
-        for delete, region in zip(deletes,self.regions):
+        for delete, region in zip(deletes, regionsAsLists):
             if not delete:
-                ok.append(region)
+                ok.append(tuple(region))
         self.regions = ok
 
     def getSetsOfSix(self, heightCriterium=0.05):
@@ -101,7 +105,7 @@ class GetCharacterRegions():
         mymax=1+heightCriterium
         for i in range(len(self.regions)):
             heightI=self.regions[i][3]
-            sixSet=set(self.regions[i])
+            sixSet=set([self.regions[i]])
             #print('ini:', sixSet)
             for j in range(len(self.regions)):
                 heightJ=self.regions[j][3]
@@ -179,6 +183,10 @@ class GetCharacterRegions():
         while(cv2.waitKey()!=ord('q')):
             continue
 
+    def getSixLists(self):
+        """ give current result of character regions for a plate ordered from left to right"""
+        return self.listOfSixLists
+
 if __name__ == '__main__':
     import sys
     app = GetCharacterRegions(imageFileName=sys.argv[1], colorConversion=None)
@@ -191,12 +199,14 @@ if __name__ == '__main__':
     app.checkSameness()
     print("22: all RECTANGLEs ",app.regions)
     print("22: end of all RECTANGLES")
-    sys.exit()
+    #sys.exit()
     app.getSetsOfSix()
-    #print("LIST OF RECTANGLE CANDIDATES",app.listOfSixSets)
-    #print("end of candidates")
+
+    print("LIST OF RECTANGLE CANDIDATES",app.listOfSixSets)
+    print("end of candidates")
     app.sortSetsAndToList()
-    print("LIST OF SORTED RECTANGLE CANDIDATES",app.listOfSixLists)
+    app.showRectangles()
+    print("LIST OF SORTED RECTANGLE CANDIDATES", app.listOfSixLists)
     print("end of SORTED candidates")
     app.showRectangles()
     app.checkSixXcloseness()
