@@ -12,17 +12,18 @@ class GetCharacterRegions():
 
     """
 
-    def __init__(self, imageFileName, colorConversion=cv2.COLOR_BGR2GRAY):
+    def __init__(self, npImage=None):
 
-        self.img = cv2.imread(imageFileName)
-        if colorConversion is not None:
-            self.img = cv2.cvtColor(self.img, colorConversion)
+        #self.img = cv2.imread(imageFileName)
+        #if colorConversion is not None:
+        #    self.img = cv2.cvtColor(self.img, colorConversion)
+        self.img = npImage  # image as numpy array
         self.mser = cv2.MSER_create()
         self.regions = None
         self.imageY = self.img.shape[0]
         self.imageX = self.img.shape[1]
         self.listOfSixSets = []   # list of sets, each set has 6 rectangles
-        self.listOfSixLists = []   # list of lists, each set has 6 rectangles
+        self.listOfSixLists = None   # list of lists, each set has 6 rectangles
         #print("x y : ",self.imageX, self.imageY)
 
 
@@ -97,33 +98,36 @@ class GetCharacterRegions():
                 ok.append(tuple(region))
         self.regions = ok
 
-    def getSetsOfSix(self, heightCriterium=0.05):
+    def determineSetsOfSix(self, heightCriterium=0.12):
         """ get all possible 6-sets of letters that are close in height"""
         import itertools
         self.listOfSixSets = []
         mymin=1-heightCriterium
         mymax=1+heightCriterium
+        print("regions: ", self.regions)
         for i in range(len(self.regions)):
             heightI=self.regions[i][3]
             sixSet=set([self.regions[i]])
             #print('ini:', sixSet)
             for j in range(len(self.regions)):
                 heightJ=self.regions[j][3]
-                #print(i, j, heightJ/heightI)
                 if (mymin < heightJ/heightI) and (mymax > heightJ/heightI):
                     sixSet.add(self.regions[j])
+                    #print(i, j, heightJ / heightI)
             # check that number of rectangles is six and this set of rectangles is new
             #print("I, LEN SET",i, len(sixSet))
-        if len(sixSet) == 6 and not(sixSet in self.listOfSixSets):
-            #print("sixset: ", sixSet)
-            self.listOfSixSets.append(sixSet)
-            # if we have a longer set, take all 6-permutations..
-        elif len(sixSet) > 6:
-            myFixedSet = frozenset(sixSet)
-            sixSetTrials= itertools.permutations(myFixedSet, 6)
-            for addSet in sixSetTrials:
-                if not(set(addSet) in self.listOfSixSets):
-                    self.listOfSixSets.append(set(addSet))
+            if len(sixSet) == 6 and not(sixSet in self.listOfSixSets):
+                #print("sixset: ", sixSet)
+                self.listOfSixSets.append(sixSet)
+                # if we have a longer set, take all 6-permutations..
+            elif len(sixSet) > 6:
+                #print("adding >6 set:", sixSet)
+                myFixedSet = frozenset(sixSet)
+                sixSetTrials= itertools.permutations(myFixedSet, 6)
+                #print("sixSetTrials: ",sixSetTrials)
+                for addSet in sixSetTrials:
+                    if not(set(addSet) in self.listOfSixSets):
+                        self.listOfSixSets.append(set(addSet))
 
 
     def sortSetsAndToList(self):
@@ -148,33 +152,55 @@ class GetCharacterRegions():
 
             self.listOfSixLists.append(sorted)
 
-    def checkSixXcloseness(self, minFraction=1.0, maxFraction=1.5):
-        """check that subsegueent rectangles are close enought
-            if NOT remove the 6-rectangle """
+    def checkSixXcloseness(self, minFraction=0.25, maxFraction=0.6):
+        """check that subsegueent rectangles are close/far enought in x-direction
+            if NOT remove the 6-rectangle
+            we compare the difference in x-direction of the characters
+            to the avereage height of the characters"""
         import numpy as np
 
-        deleteList = []
-        for rectangles in self.listOfSixLists:
-            averageWidth=np.average(np.asarray(rectangles[:][0]))
-            if ((rectangles[1][0] - rectangles[0][0]) < (minFraction * averageWidth) or \
-                (rectangles[2][0] - rectangles[1][0]) < (minFraction * averageWidth) or \
-                (rectangles[3][0] - rectangles[2][0]) < (minFraction * averageWidth) or \
-                (rectangles[4][0] - rectangles[3][0]) < (minFraction * averageWidth) or \
-                (rectangles[5][0] - rectangles[4][0]) < (minFraction * averageWidth) or \
-                (rectangles[1][0] - rectangles[0][0]) > (maxFraction * averageWidth) or \
-                (rectangles[2][0] - rectangles[1][0]) > (maxFraction * averageWidth) or \
-                #(rectangles[3][0] - rectangles[2][0]) > (maxFraction*averageWidth) or \ not for '-'
-                (rectangles[4][0] - rectangles[3][0]) > (maxFraction * averageWidth) or \
-                (rectangles[5][0] - rectangles[4][0]) > (maxFraction * averageWidth)):
-                deleteList.append(True)
+        deletePlate = []
+        for plate in self.listOfSixLists:
+            averageHeight=np.average(np.asarray(plate[:][3]))
+            print("AVERAGE Height:", averageHeight, plate)
+            if ((plate[1][0] - plate[0][0]) < (minFraction * averageHeight) or \
+                (plate[2][0] - plate[1][0]) < (minFraction * averageHeight) or \
+                (plate[3][0] - plate[2][0]) < (minFraction * averageHeight) or \
+                (plate[4][0] - plate[3][0]) < (minFraction * averageHeight) or \
+                (plate[5][0] - plate[4][0]) < (minFraction * averageHeight) or \
+                (plate[1][0] - plate[0][0]) > (maxFraction * averageHeight) or \
+                (plate[2][0] - plate[1][0]) > (maxFraction * averageHeight) or \
+                #(plate[3][0] - plate[2][0]) > (maxFraction*averageHeight) or \ not for '-'
+                (plate[4][0] - plate[3][0]) > (maxFraction * averageHeight) or \
+                (plate[5][0] - plate[4][0]) > (maxFraction * averageHeight)):
+                deletePlate.append(True)
             else:
-                deleteList.append(False)
+                deletePlate.append(False)
         accepted = []
-        for i, delete in enumerate(deleteList):
+        for i, delete in enumerate(deletePlate):
             if not delete:
                 accepted.append(self.listOfSixLists[i])
+        self.listOfSixLists = accepted
 
-    def showRectangles(self):
+    def getCurrentSixLists(self):
+        print("current list of list(s)/set(s)")
+        if self.listOfSixLists is None:
+            return self.listOfSixSets
+        else:
+            return self.listOfSixLists
+
+    def writeRectangles(self):
+        clone = self.getClone()
+        for i, (x,y,w,h) in enumerate(self.regions):
+            roi_gray = clone[y:y+h, x:x+w]
+            cv2.imwrite(str(i)+'-'+sys.argv[1]+'.tif', roi_gray)
+
+
+        cv2.imshow('clone', clone)
+        while(cv2.waitKey()!=ord('q')):
+            continue
+
+    def showIntermediateRectangles(self):
         clone = self.getClone()
         for (x,y,w,h) in self.regions:
             cv2.rectangle(clone,(x,y),(x+w,y+h),(0,255,0),5)
@@ -183,7 +209,17 @@ class GetCharacterRegions():
         while(cv2.waitKey()!=ord('q')):
             continue
 
-    def getSixLists(self):
+    def showFinalRectangles(self):
+        clone = self.getClone()
+        for candidatePlate in self.listOfSixLists:
+            for (x,y,w,h) in candidatePlate:
+                cv2.rectangle(clone,(x,y),(x+w,y+h),(0,255,0),5)
+                roi_gray = clone[y:y+h, x:x+w]
+        cv2.imshow('clone', clone)
+        while(cv2.waitKey()!=ord('q')):
+            continue
+
+    def getFinalSixLists(self):
         """ give current result of character regions for a plate ordered from left to right"""
         return self.listOfSixLists
 
@@ -200,7 +236,7 @@ if __name__ == '__main__':
     print("22: all RECTANGLEs ",app.regions)
     print("22: end of all RECTANGLES")
     #sys.exit()
-    app.getSetsOfSix()
+    app.determineSetsOfSix()
 
     print("LIST OF RECTANGLE CANDIDATES",app.listOfSixSets)
     print("end of candidates")
