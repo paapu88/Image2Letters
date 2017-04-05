@@ -85,12 +85,13 @@ class MyTesseract():
                     #print ("confidence on plate ", self.plateConfidences[-1])
                     #print("PLATE IS: ", self.plateStrings[-1])
 
-        #get plate with largest confidence
-        sorted_idx = np.argsort(self.plateConfidences)[::-1]
-        largest_i = sorted_idx[0]
-        self.finalString = self.plateStrings[largest_i]
-        self.finalPlateConfidence = self.plateConfidences[largest_i]
-        self.finalCharacterConfidences = self.characterConfidences[largest_i]
+        if len(self.plateStrings)> 0:
+            #get plate with largest confidence
+            sorted_idx = np.argsort(self.plateConfidences)[::-1]
+            largest_i = sorted_idx[0]
+            self.finalString = self.plateStrings[largest_i]
+            self.finalPlateConfidence = self.plateConfidences[largest_i]
+            self.finalCharacterConfidences = self.characterConfidences[largest_i]
         #print("PLATE, confidence, char conf:", self.finalString, self.finalPlateConfidence, self.finalCharacterConfidences)
 
 

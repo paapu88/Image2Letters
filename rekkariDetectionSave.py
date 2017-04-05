@@ -77,6 +77,7 @@ class DetectPlate():
 
 
     def writePlates(self):
+        self.image2Plates()
         clone = self.getGray().copy()
         for i, [x,y,w,h] in enumerate(self.plates):
             print("xywh",x,y,w,h)
@@ -86,7 +87,8 @@ class DetectPlate():
 if __name__ == '__main__':
     import sys
     app = DetectPlate(imageFileName=sys.argv[1])
-    app.showPlates()
+    app.writePlates()
+    #app.showPlates()
 
 
 
