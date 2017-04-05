@@ -7,9 +7,11 @@ import sys
 
 
 class GetCharacterRegions():
-    """typically within one plate.
-    getInitialRegions returns the canditate-rectangles for all letters in the image
-
+    """
+    from one image representing a possible plate get the rectangles in which letters/number are located
+    INPUT: gray scale image as numpy array
+    OUTPUT: list of possible plates in this image
+            each possible plate is a list of six rectangles
     """
 
     def __init__(self, npImage=None):
@@ -31,10 +33,7 @@ class GetCharacterRegions():
         """ get rectangles of possible characters"""
         # tuple is used instead of list because we need make sets of tuples
         self.regions = tuple(self.mser.detectRegions(self.img)[-1])
-        #print(self.regions)
-        #hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions[0]]
-        #cv2.polylines(vis, hulls, 1, (0,255,0))
-        #return regions
+
 
     def getClone(self):
         return self.img.copy()
@@ -56,7 +55,7 @@ class GetCharacterRegions():
         self.regions = ok
 
     def checkArea(self, minArea=0.005, maxArea=0.2):
-        """letters with too small areas are killed"""
+        """letters with too small/large area are killed"""
         ok = []
         imageArea = self.imageX * self.imageY
         for (x,y,w,h) in self.regions:
@@ -67,7 +66,7 @@ class GetCharacterRegions():
 
     def checkSameness(self, toleranceInPixel=None):
         """ if we have almost the same rectange, kill one of them
-            the remaining rectangle is as big as possible
+            the remaining rectangle is the bigger one.
         """
         if toleranceInPixel is None:
             toleranceInPixel = int(round((self.imageX / 7) / 5))  # default tolerance one fifth of one character space
@@ -95,7 +94,7 @@ class GetCharacterRegions():
         self.regions = ok
 
     def determineSetsOfSix(self, heightCriterium=0.12):
-        """ get all possible 6-sets of letters that are close in height"""
+        """ get all possible 6-sets of letters that are close each other in height"""
         import itertools
         self.listOfSixSets = []
         mymin=1-heightCriterium
@@ -127,7 +126,7 @@ class GetCharacterRegions():
 
 
     def sortSetsAndToList(self):
-        """sort sets by x coordinate"""
+        """sort charactar regions in each plate by x coordinate"""
         import numpy as np
         ok = []
         self.listOfSixLists = []
@@ -149,7 +148,7 @@ class GetCharacterRegions():
             self.listOfSixLists.append(sorted)
 
     def checkSixXcloseness(self, minFraction=0.25, maxFraction=0.7):
-        """check that subsegueent rectangles are close/far enought in x-direction
+        """check that subsequent rectangles are close/far enought in x-direction
             if NOT remove the 6-rectangle
             we compare the difference in x-direction of the characters
             to the avereage height of the characters"""
@@ -158,7 +157,7 @@ class GetCharacterRegions():
         deletePlate = []
         for plate in self.listOfSixLists:
             averageHeight=np.average(np.asarray(plate[:][3]))
-            print("AVERAGE Height:", averageHeight, plate)
+            #print("AVERAGE Height:", averageHeight, plate)
             if ((plate[1][0] - plate[0][0]) < (minFraction * averageHeight) or \
                 (plate[2][0] - plate[1][0]) < (minFraction * averageHeight) or \
                 (plate[3][0] - plate[2][0]) < (minFraction * averageHeight) or \
@@ -179,6 +178,7 @@ class GetCharacterRegions():
         self.listOfSixLists = accepted
 
     def getCurrentSixLists(self):
+        """ current candidates for character regions"""
         #print("current list of list(s)/set(s)")
         if self.listOfSixLists is None:
             return self.listOfSixSets
@@ -186,6 +186,7 @@ class GetCharacterRegions():
             return self.listOfSixLists
 
     def writeIntermediateRectangles(self):
+        """ write all current rectangles to disk individually """
         clone = self.getClone()
         for i, (x,y,w,h) in enumerate(self.regions):
             roi_gray = clone[y:y+h, x:x+w]
@@ -193,6 +194,7 @@ class GetCharacterRegions():
 
 
     def showIntermediateRectangles(self):
+        """ show image with current rectangles on it"""
         clone = self.getClone()
         for (x,y,w,h) in self.regions:
             cv2.rectangle(clone,(x,y),(x+w,y+h),(0,255,0),5)
@@ -201,6 +203,7 @@ class GetCharacterRegions():
             continue
 
     def writeFinalRectangles(self):
+        """ write final rectangles to disk individually """
         clone = self.getClone()
         i=0
         for candidatePlate in self.listOfSixLists:
@@ -210,6 +213,7 @@ class GetCharacterRegions():
                 i=i+1
 
     def showFinalRectangles(self):
+        """ show image with final rectangles on it"""
         clone = self.getClone()
         for candidatePlate in self.listOfSixLists:
             for (x,y,w,h) in candidatePlate:
@@ -219,9 +223,26 @@ class GetCharacterRegions():
         while(cv2.waitKey()!=ord('q')):
             continue
 
-    def getFinalSixLists(self):
+    def getFinalListSixLists(self):
         """ give Final result of character regions for a plate ordered from left to right"""
         return self.listOfSixLists
+
+    def imageToPlatesWithCharacterRegions(self):
+        """from a given numpy array representing the image possibly containing licence plate(s),
+        returns a list of possible plates
+                each possible plate is a list of six rectangles"""
+        self.getInitialRegions()
+        self.checkHeight()
+        self.checkWidth()
+        self.checkArea()
+        self.checkSameness()
+        self.determineSetsOfSix()
+        self.sortSetsAndToList()
+        self.checkSixXcloseness()
+        #self.writeFinalRectangles()
+        return self.getFinalListSixLists()
+
+
 
 if __name__ == '__main__':
     import sys

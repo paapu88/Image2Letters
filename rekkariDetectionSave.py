@@ -36,16 +36,18 @@ class DetectPlate():
         self.npPlates = []  #images of plate(s) as array of numpy arrays
 
     def image2Plates(self):
+        """ from image, produce rectangle(s) that contain possible plate, output as list of rectanges"""
         self.img = cv2.imread(self.imageFileName)
         self.gray = cv2.cvtColor(self.img.copy(), self.colorConversion)
         rectangles = self.cascade.detectMultiScale(self.gray, self.scaleFactor, self.detectFactor, minSize=self.minSize)
         plates = []
         for [x,y,w,h] in rectangles:
-            roi_gray = self.gray[y:y+h, x:x+w]
             plates.append([x,y,w,h])
         self.plates = plates
 
     def image2PlateNumpyArrays(self):
+        """ from image, produce rectangle(s) that contain possible plate,
+        output as list of numpy array(s) representing gray scale images(s) about possible plates"""
         self.npPlates = []
         self.img = cv2.imread(self.imageFileName)
         self.gray = cv2.cvtColor(self.img.copy(), self.colorConversion)
@@ -56,6 +58,7 @@ class DetectPlate():
 
     def getNpPlates(self):
         """ give found plate(s) as array of numpy arrays"""
+        self.image2PlateNumpyArrays()
         return self.npPlates
 
 
@@ -83,7 +86,6 @@ class DetectPlate():
 if __name__ == '__main__':
     import sys
     app = DetectPlate(imageFileName=sys.argv[1])
-    app.image2Plate()
     app.showPlates()
 
 

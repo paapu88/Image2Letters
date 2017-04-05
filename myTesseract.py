@@ -23,6 +23,9 @@ class MyTesseract():
         self.plateStrings = []
         self.charecterConfidences = []
         self.plateConfidences = []
+        self.finalString = None   # final plate string
+        self.finalPlateConfidence = None  # confidence on final plate string
+        self.finalCharacterConfidences = None  # in final plate string, confidence on individual characters
 
     def setImage(self, image):
         """
@@ -41,7 +44,9 @@ class MyTesseract():
         """ loops over plates and characters in a plate
         gets character of the rectangle and
         confidence for character recognition and
-        confidence for overall plate recognition """
+        confidence for overall plate recognition
+        gives the six-character which has highest probability
+        """
         import numpy as np
 
         #self.rectangles = listOfListofRectangles
@@ -67,17 +72,36 @@ class MyTesseract():
                         #print("rectangle:", x,y,w,h)
                         string = string + apiL.GetUTF8Text().strip()
                         #print("current string: ", apiL.GetUTF8Text())
-                        confidenceOnCharacter.append(apiL.AllWordConfidences())
+                        confidenceOnCharacter.append(round(apiL.AllWordConfidences()[0]/100,2))
                     # digits
                     for [x,y,w,h] in plate[3:6]:
                         apiD.SetRectangle(x, y, w, h)
                         string = string + apiD.GetUTF8Text().strip()
-                        confidenceOnCharacter.append(apiD.AllWordConfidences())
-                    self.plateStrings.append(string)
-                    #self.characterConfidences.append(confidenceOnCharacter)
+                        confidenceOnCharacter.append(round(apiD.AllWordConfidences()[0]/100,2))
+                    self.plateStrings.append(string[0:3]+'-'+string[3:6])
+                    self.characterConfidences.append(confidenceOnCharacter)
                     #print ("confidence on characters, ", confidenceOnCharacter)
-                    #self.plateConfidences.append(np.prod(np.array(confidenceOnCharacter)))
-                    print("PLATE IS: ", string[0:3]+'-'+string[3:6])
+                    self.plateConfidences.append(round(np.prod(np.array(confidenceOnCharacter)),2))
+                    #print ("confidence on plate ", self.plateConfidences[-1])
+                    #print("PLATE IS: ", self.plateStrings[-1])
+
+        #get plate with largest confidence
+        sorted_idx = np.argsort(self.plateConfidences)[::-1]
+        largest_i = sorted_idx[0]
+        self.finalString = self.plateStrings[largest_i]
+        self.finalPlateConfidence = self.plateConfidences[largest_i]
+        self.finalCharacterConfidences = self.characterConfidences[largest_i]
+        #print("PLATE, confidence, char conf:", self.finalString, self.finalPlateConfidence, self.finalCharacterConfidences)
+
+
+    def getFinalString(self):
+        return self.finalString
+
+    def getFinalPlateConfidence(self):
+        return self.finalPlateConfidence
+
+    def getFinalCharacterConfidences(self):
+        return self.finalCharacterConfidences
 
 
     def defineSingleCharacter(self, lang='fin'):
