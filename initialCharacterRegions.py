@@ -60,6 +60,14 @@ class InitialCharacterRegions():
         # tuple is used instead of list because we need make sets of tuples
         self.regions = tuple(self.mser.detectRegions(self.img)[-1])
 
+    def getInitialRegionsSIFT(self):
+        """surface detection, works only with contributed stuff in opencv3
+        try also SURF
+        """
+        sift = cv2.xfeatures2d.SIFT_create()
+        (kps, descs) = sift.detectAndCompute(self.img, None)
+        self.img=cv2.drawKeypoints(self.img,kps,outImage=None)
+        #self.img = cv2.drawKeypoints(self.img, kps, outImage=None, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
     def getInitialRegionsByContours(self):
         clone = self.getClone()
@@ -93,5 +101,6 @@ if __name__ == '__main__':
     app = InitialCharacterRegions()
     app.setImageFromFile(imageFileName=sys.argv[1])
     #app.getInitialRegionsMser()
-    app.getInitialRegionsByContours()
+    #app.getInitialRegionsByContours()
+    app.getInitialRegionsSIFT()
     app.showAllRectangles()

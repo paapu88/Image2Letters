@@ -155,6 +155,7 @@ class FilterImage():
         kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
         self.filtered = cv2.filter2D(self.filtered, -1, kernel)
 
+
     def showOriginalAndFiltered(self):
         """ show original and filtered image"""
 
