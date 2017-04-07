@@ -155,6 +155,19 @@ class FilterImage():
         kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
         self.filtered = cv2.filter2D(self.filtered, -1, kernel)
 
+    def erosion(self):
+        """
+        http://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_morphological_ops/py_morphological_ops.html
+        erosion and dilation are vice versa if the original letter is black
+        """
+
+        kernel = np.ones((2, 2), np.uint8)
+        self.filtered = cv2.dilate(self.filtered,kernel,iterations = 1)
+
+        kernel = np.ones((1, 1), np.uint8)
+        self.filtered = cv2.erode(self.filtered, kernel, iterations=1)
+        #self.filtered = cv2.morphologyEx(self.filtered, cv2.MORPH_OPEN, kernel)
+        #self.filtered = cv2.morphologyEx(self.filtered, cv2.MORPH_CLOSE, kernel)
 
     def showOriginalAndFiltered(self):
         """ show original and filtered image"""
@@ -180,7 +193,8 @@ if __name__ == '__main__':
     import sys
     app = FilterImage()
     app.setImageFromFile(imageFileName=sys.argv[1])
-    app.sharpen2()
+    app.erosion()
+    #app.sharpen2()
     #app.inPaint()
     #app.deBlur()
     #app.filterAdptiveThreshold()
