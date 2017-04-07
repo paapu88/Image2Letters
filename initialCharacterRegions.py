@@ -72,7 +72,7 @@ class InitialCharacterRegions():
     def getInitialRegionsByContours(self):
         clone = self.getClone()
         clone = cv2.bitwise_not(clone)
-        ret, clone = cv2.threshold(clone, 160, 255, cv2.THRESH_BINARY)
+        ret, clone = cv2.threshold(clone, 30, 255, cv2.THRESH_BINARY)
         contours = cv2.findContours(clone, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
         # cv2.drawContours(self.img, contours, -1, (0,255,0), 1)
         self.regions = []
@@ -81,15 +81,19 @@ class InitialCharacterRegions():
         print("N OF CONTOURS", len(contours))
 
 
-    def showAllRectangles(self):
+    def showAllRectangles(self, clone=None, regions=None):
         """ show image with current rectangles on it"""
 
-        if self.regions is None:
+        if self.regions is None and regions is None:
             raise RuntimeError("No rectangles, did you remember to search them by some method in InitialCharacterRegions?")
-        clone = self.getClone()
+
+        if clone is None:
+            clone = self.getClone()
+        if regions is None:
+            regions=self.regions
         clone = cv2.cvtColor(clone, cv2.COLOR_GRAY2RGB)
-        for (x,y,w,h) in self.regions:
-            cv2.rectangle(clone,(x,y),(x+w,y+h),(255,0, 0),1)
+        for (x,y,w,h) in regions:
+            cv2.rectangle(clone,(x,y),(x+w,y+h),(255,0, 0),3)
         plt.imshow(clone)
         plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
         plt.show()
