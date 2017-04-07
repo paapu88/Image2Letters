@@ -12,6 +12,7 @@ import cv2
 from matplotlib import pyplot as plt
 from glob import glob
 import sys
+import os
 
 class DetectPlate():
 
@@ -19,7 +20,6 @@ class DetectPlate():
                 imageFileName=None,
                 detectFactor=5, scaleFactor=1.03, minSize=(5,18),
                 colorConversion=cv2.COLOR_BGR2GRAY):
-        import os
 
         if not os.path.isfile(trainedHaarFileName):
             raise FileNotFoundError('you need cascade training file for cv2.CascadeClassifier')
@@ -37,6 +37,8 @@ class DetectPlate():
 
     def image2Plates(self):
         """ from image, produce rectangle(s) that contain possible plate, output as list of rectanges"""
+        if not os.path.isfile(self.imageFileName):
+            raise FileNotFoundError('NO imagefile with name: ' + self.imageFileName)
         self.img = cv2.imread(self.imageFileName)
         self.gray = cv2.cvtColor(self.img.copy(), self.colorConversion)
         rectangles = self.cascade.detectMultiScale(self.gray, self.scaleFactor, self.detectFactor, minSize=self.minSize)
@@ -48,6 +50,8 @@ class DetectPlate():
     def image2PlateNumpyArrays(self):
         """ from image, produce rectangle(s) that contain possible plate,
         output as list of numpy array(s) representing gray scale images(s) about possible plates"""
+        if not os.path.isfile(self.imageFileName):
+            raise FileNotFoundError('NO imagefile with name: ' + self.imageFileName)
         self.npPlates = []
         self.img = cv2.imread(self.imageFileName)
         self.gray = cv2.cvtColor(self.img.copy(), self.colorConversion)
@@ -64,6 +68,7 @@ class DetectPlate():
 
     def getGray(self):
         return self.gray.copy()
+
 
     def showPlates(self):
         self.image2Plates()
@@ -86,7 +91,7 @@ class DetectPlate():
 
 if __name__ == '__main__':
     import sys
-    app = DetectPlate(imageFileName=sys.argv[1])
+    app = DetectPlate(imageFileName=sys.argv[1], detectFactor=1)
     app.writePlates()
     #app.showPlates()
 
