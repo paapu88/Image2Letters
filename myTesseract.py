@@ -2,6 +2,7 @@
 INPUT: image file and  list of tuples of six rectangles (many times six tuples possible)
 OUTPUT: list of recognized characters and their probablilities and total prbability of a plate
 
+
 python3 myTesseract.py 0-vkz-825.jpg.tif
 """
 

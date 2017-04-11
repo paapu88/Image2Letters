@@ -158,7 +158,7 @@ class FilterCharacterRegions(InitialCharacterRegions):
 
             self.listOfSixLists.append(sorted)
 
-    def checkSixXcloseness(self, minFraction=0.25, maxFraction=0.7):
+    def checkSixXcloseness(self, minFraction=0.25, maxFraction=0.8):
         """check that subsequent rectangles are close/far enought in x-direction
             if NOT remove the 6-rectangle
             we compare the difference in x-direction of the characters
@@ -236,7 +236,7 @@ class FilterCharacterRegions(InitialCharacterRegions):
         for candidatePlate in self.listOfSixLists:
             for (x,y,w,h) in candidatePlate:
                 cv2.rectangle(clone,(x,y),(x+w,y+h),(0,255,0),5)
-        cv2.imshow('clone', clone)
+        cv2.imshow('Final Rectangles', clone)
         while(cv2.waitKey()!=ord('q')):
             continue
 
@@ -249,13 +249,29 @@ class FilterCharacterRegions(InitialCharacterRegions):
         returns a list of possible plates
                 each possible plate is a list of six rectangles"""
         self.getInitialRegionsMser()
-        self.showIntermediateRectangles()
+        #self.showIntermediateRectangles()
         self.checkHeight()
         self.checkWidth()
         self.checkArea()
         self.checkSameness()
         self.determineSetsOfSix()
         self.sortSetsAndToList()
+        self.checkSixXcloseness()
+        #self.writeFinalRectangles()
+        return self.getFinalListSixLists()
+
+    def plateChars2CharacterRegions(self):
+        """from a given numpy array representing the image possibly containing licence plate(s),
+        returns a list of possible plates
+                each possible plate is a list of six rectangles"""
+        self.getInitialRegionsMser()
+        self.checkHeight(minHeight=0.8)
+        self.checkWidth(minWidth=0.01, maxWidth=0.2)
+        self.checkArea(minArea=0.01,maxArea=0.2)
+        self.checkSameness()
+        self.determineSetsOfSix()
+        self.sortSetsAndToList()
+        #self.showIntermediateRectangles()
         self.checkSixXcloseness()
         #self.writeFinalRectangles()
         return self.getFinalListSixLists()

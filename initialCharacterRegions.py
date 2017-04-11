@@ -15,6 +15,7 @@ class InitialCharacterRegions():
     def __init__(self, npImage=None):
         self.img = npImage  # image as numpy array
         self.mser = cv2.MSER_create(_max_variation=10)
+        print("init of InitialCharacterRegions")
         self.regions = None
         if npImage is not None:
             self.imageY = self.img.shape[0]
@@ -67,6 +68,9 @@ class InitialCharacterRegions():
         sift = cv2.xfeatures2d.SIFT_create()
         (kps, descs) = sift.detectAndCompute(self.img, None)
         self.img=cv2.drawKeypoints(self.img,kps,outImage=None)
+        plt.imshow(self.img, cmap='gray', interpolation='bicubic')
+        plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+        plt.show()
         #self.img = cv2.drawKeypoints(self.img, kps, outImage=None, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
     def getInitialRegionsByContours(self):
@@ -104,7 +108,7 @@ if __name__ == '__main__':
     import sys
     app = InitialCharacterRegions()
     app.setImageFromFile(imageFileName=sys.argv[1])
-    #app.getInitialRegionsMser()
+    app.getInitialRegionsMser()
     #app.getInitialRegionsByContours()
-    app.getInitialRegionsSIFT()
+    #app.getInitialRegionsSIFT()
     app.showAllRectangles()

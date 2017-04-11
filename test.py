@@ -1,5 +1,7 @@
 """
 test getting string of characters of a licence plate
+
+cd  /home/mka/PycharmProjects/Image2Letters/test.py
 python3 /home/mka/PycharmProjects/Image2Letters/test.py "*.jpg"
 """
 import sys
@@ -23,17 +25,18 @@ for file in files:
     plates = app1.getNpPlates()
     app1.showPlates()
     print(file+' number of plates found '+ str(len(plates)))
+
     for plate in plates:
         # from a plate image to list of six-rectangles
-        app2 = FilterImage(npImage=plate)
-        plate = app2.filterOtsu()
+        #app2 = FilterImage(npImage=plate)
+        #plate = app2.filterOtsu()
         app3 = FilterCharacterRegions(npImage=plate)
         platesWithCharacterRegions = app3.imageToPlatesWithCharacterRegions()
 
         app5 = MyTesseract()
         app5.setImage(plate)
         #app3.showImage()
-        app5.defineSixPlateCharacters(platesWithCharacterRegions)
+        app5.defineSixPlateCharacters(platesWithCharacterRegions,lang='eng')
         print("PLATE, confidence, char conf:", \
               app5.getFinalString(), \
               app5.getFinalPlateConfidence(), \

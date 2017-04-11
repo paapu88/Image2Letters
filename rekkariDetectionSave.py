@@ -19,7 +19,8 @@ class DetectPlate():
     def __init__(self, trainedHaarFileName='/home/mka/PycharmProjects/Image2Letters/rekkari.xml',
                 imageFileName=None,
                 detectFactor=5, scaleFactor=1.03, minSize=(5,18),
-                colorConversion=cv2.COLOR_BGR2GRAY):
+                colorConversion=cv2.COLOR_BGR2GRAY,
+                imageXfactor=None, imageYfactor=None):
 
         if not os.path.isfile(trainedHaarFileName):
             raise FileNotFoundError('you need cascade training file for cv2.CascadeClassifier')
@@ -30,6 +31,8 @@ class DetectPlate():
         self.scaleFactor = scaleFactor
         self.minSize = minSize
         self.colorConversion = colorConversion
+        self.imageXfactor = imageXfactor  # scale image x dimension by this
+        self.imageYfactor = imageYfactor  # scale image x dimension by this
         self.img = None
         self.gray = None
         self.plates = None
@@ -40,10 +43,13 @@ class DetectPlate():
         if not os.path.isfile(self.imageFileName):
             raise FileNotFoundError('NO imagefile with name: ' + self.imageFileName)
         self.img = cv2.imread(self.imageFileName)
+        if self.imageXfactor is not None:
+            self.img = cv2.resize(self.img,None,fx=self.imageXfactor, fy=self.imageYfactor)
         self.gray = cv2.cvtColor(self.img.copy(), self.colorConversion)
         rectangles = self.cascade.detectMultiScale(self.gray, self.scaleFactor, self.detectFactor, minSize=self.minSize)
         plates = []
         for [x,y,w,h] in rectangles:
+            print("xywh", x,y,w,h)
             plates.append([x,y,w,h])
         self.plates = plates
 
@@ -54,6 +60,8 @@ class DetectPlate():
             raise FileNotFoundError('NO imagefile with name: ' + self.imageFileName)
         self.npPlates = []
         self.img = cv2.imread(self.imageFileName)
+        if self.imageXfactor is not None:
+            self.img = cv2.resize(self.img,None,fx=self.imageXfactor, fy=self.imageYfactor)
         self.gray = cv2.cvtColor(self.img.copy(), self.colorConversion)
         rectangles = self.cascade.detectMultiScale(self.gray, self.scaleFactor, self.detectFactor, minSize=self.minSize)
         for [x,y,w,h] in rectangles:
@@ -76,9 +84,13 @@ class DetectPlate():
         for i, [x,y,w,h] in enumerate(self.plates):
             print("xywh",x,y,w,h)
             cv2.rectangle(clone,(x,y),(x+w,y+h),(0,255,0),5)
-        cv2.imshow('clone', clone)
-        while(cv2.waitKey()!=ord('q')):
-            continue
+        plt.imshow(clone, cmap = 'gray', interpolation = 'bicubic')
+        #plt.imshow(clone)
+        plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+        plt.show()
+        #cv2.imshow('clone', clone)
+        #while(cv2.waitKey()!=ord('q')):
+        #    continue
 
 
     def writePlates(self):
@@ -90,10 +102,14 @@ class DetectPlate():
             cv2.imwrite(str(i)+'-'+'plate'+'-'+sys.argv[1]+'.tif', roi_gray)
 
 if __name__ == '__main__':
-    import sys
-    app = DetectPlate(imageFileName=sys.argv[1], detectFactor=1)
-    app.writePlates()
-    #app.showPlates()
+    import sys, glob
+    #app = DetectPlate(imageFileName=sys.argv[1], detectFactor=1)
+    for imageFileName in glob.glob(sys.argv[1]):
+        app = DetectPlate(imageFileName=imageFileName,
+                        trainedHaarFileName='/home/mka/PycharmProjects/Rekkari/TrainingWithITO40_letterDigitsOnly/PositivePicturesFromPhone/classifier/cascade.xml',
+                        detectFactor=1, imageXfactor=1920/2048, imageYfactor=1080/1232)
+        #app.writePlates()
+        app.showPlates()
 
 
 

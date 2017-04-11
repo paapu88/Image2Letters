@@ -161,11 +161,12 @@ class FilterImage():
         erosion and dilation are vice versa if the original letter is black
         """
 
-        kernel = np.ones((2, 2), np.uint8)
+        kernel = np.ones((3, 3), np.uint8)
         self.filtered = cv2.dilate(self.filtered,kernel,iterations = 1)
 
-        kernel = np.ones((1, 1), np.uint8)
-        self.filtered = cv2.erode(self.filtered, kernel, iterations=1)
+        #kernel = np.ones((1, 1), np.uint8)
+        #self.filtered = cv2.erode(self.filtered, kernel, iterations=1)
+
         #self.filtered = cv2.morphologyEx(self.filtered, cv2.MORPH_OPEN, kernel)
         #self.filtered = cv2.morphologyEx(self.filtered, cv2.MORPH_CLOSE, kernel)
 
