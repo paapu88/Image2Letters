@@ -102,6 +102,17 @@ class InitialCharacterRegions():
         plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
         plt.show()
 
+    def writeAllRectangles(self, clone=None, regions=None):
+        """ write all current rectangles to disk individually """
+        if self.regions is None and regions is None:
+            raise RuntimeError("No rectangles, did you remember to search them by some method in InitialCharacterRegions?")
+        if clone is None:
+            clone = self.getClone()
+        if regions is None:
+            regions=self.regions
+        for i, (x,y,w,h) in enumerate(self.regions):
+            roi_gray = clone[y:y+h, x:x+w]
+            cv2.imwrite(str(i)+'-'+sys.argv[1]+'.tif', roi_gray)
 
 
 if __name__ == '__main__':
@@ -112,3 +123,4 @@ if __name__ == '__main__':
     #app.getInitialRegionsByContours()
     #app.getInitialRegionsSIFT()
     app.showAllRectangles()
+    app.writeAllRectangles()

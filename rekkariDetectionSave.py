@@ -93,24 +93,32 @@ class DetectPlate():
         #    continue
 
 
-    def writePlates(self):
+    def writePlates(self, name=None):
         self.image2Plates()
         clone = self.getGray().copy()
         for i, [x,y,w,h] in enumerate(self.plates):
             print("xywh",x,y,w,h)
             roi_gray = clone[y:y+h, x:x+w]
-            cv2.imwrite(str(i)+'-'+'plate'+'-'+sys.argv[1]+'.tif', roi_gray)
+            if name is None:
+                cv2.imwrite(str(i)+'-'+'plate'+'-'+sys.argv[1]+'.tif', roi_gray)
+            else:
+                cv2.imwrite(str(i)+'-'+name, roi_gray)
 
 if __name__ == '__main__':
     import sys, glob
     #app = DetectPlate(imageFileName=sys.argv[1], detectFactor=1)
     for imageFileName in glob.glob(sys.argv[1]):
         app = DetectPlate(imageFileName=imageFileName,
-                        trainedHaarFileName='/home/mka/PycharmProjects/Rekkari/TrainingWithITO40_letterDigitsOnly/PositivePicturesFromPhone/classifier/cascade.xml',
-                        detectFactor=1, imageXfactor=1920/2048, imageYfactor=1080/1232)
-        #app.writePlates()
+                        trainedHaarFileName='/home/mka/PycharmProjects/Rekkari/rekkari.xml',
+                        detectFactor=1)
+        app.writePlates(name='plateOnly-'+sys.argv[1])
         app.showPlates()
 
+        #app = DetectPlate(imageFileName='0-test.jpg',
+        #                trainedHaarFileName='/home/mka/PycharmProjects/Rekkari/character.xml',
+        #                scaleFactor=1.001,detectFactor=0,minSize=(3,5))
+        #app.writePlates()
+        #app.showPlates()
 
 
 

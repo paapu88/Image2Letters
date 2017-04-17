@@ -227,7 +227,8 @@ class FilterCharacterRegions(InitialCharacterRegions):
         for candidatePlate in self.listOfSixLists:
             for (x,y,w,h) in candidatePlate:
                 roi_gray = clone[y:y+h, x:x+w]
-                cv2.imwrite(str(i)+'-'+sys.argv[1]+'.tif', roi_gray)
+                print ("writing ",x,y,str(i)+'-'+sys.argv[1][2:]+'.tif')
+                cv2.imwrite(str(i)+'-'+sys.argv[1][2:]+'.tif', roi_gray)
                 i=i+1
 
     def showFinalRectangles(self):
@@ -265,15 +266,15 @@ class FilterCharacterRegions(InitialCharacterRegions):
         returns a list of possible plates
                 each possible plate is a list of six rectangles"""
         self.getInitialRegionsMser()
-        self.checkHeight(minHeight=0.8)
-        self.checkWidth(minWidth=0.01, maxWidth=0.2)
-        self.checkArea(minArea=0.01,maxArea=0.2)
+        self.checkHeight()
+        self.checkWidth()
+        self.checkArea()
         self.checkSameness()
         self.determineSetsOfSix()
         self.sortSetsAndToList()
-        #self.showIntermediateRectangles()
+        ##self.showIntermediateRectangles()
         self.checkSixXcloseness()
-        #self.writeFinalRectangles()
+        ##self.writeFinalRectangles()
         return self.getFinalListSixLists()
 
 
@@ -282,32 +283,39 @@ if __name__ == '__main__':
     import sys
     app = FilterCharacterRegions()
     app.setImageFromFile(imageFileName=sys.argv[1])
-    app.cleanImage()
-    #app.getInitialRegionsMser()
-    app.getInitialRegionsByContours()
-    app.showIntermediateRectangles()
+    app.plateChars2CharacterRegions()
+    app.writeFinalRectangles()
+    app.showFinalRectangles()
     sys.exit()
+
+    #app.cleanImage()
+    app.getInitialRegionsMser()
+    #app.getInitialRegionsByContours()
+    app.showIntermediateRectangles()
+    #sys.exit()
     app.checkHeight()
     app.checkWidth()
     app.checkArea()
-    print("all RECTANGLEs ",app.regions)
-    print("end of all RECTANGLES")
+    app.showIntermediateRectangles()
+
+    #print("all RECTANGLEs ",app.regions)
+    #print("end of all RECTANGLES")
     app.checkSameness()
-    print("22: all RECTANGLEs ",app.regions)
-    print("22: end of all RECTANGLES")
+    #print("22: all RECTANGLEs ",app.regions)
+    #print("22: end of all RECTANGLES")
     #sys.exit()
     app.determineSetsOfSix()
 
-    print("LIST OF RECTANGLE CANDIDATES",app.listOfSixSets)
-    print("end of candidates")
+    #print("LIST OF RECTANGLE CANDIDATES",app.listOfSixSets)
+    #print("end of candidates")
     app.sortSetsAndToList()
-    app.showRectangles()
-    print("LIST OF SORTED RECTANGLE CANDIDATES", app.listOfSixLists)
-    print("end of SORTED candidates")
-    app.showRectangles()
+    #app.showRectangles()
+    #print("LIST OF SORTED RECTANGLE CANDIDATES", app.listOfSixLists)
+    #print("end of SORTED candidates")
+    #app.showRectangles()
     app.checkSixXcloseness()
-    print("FINAL LIST OF SORTED RECTANGLE CANDIDATES",app.listOfSixLists)
-    print("end of SORTED candidates")
+    #print("FINAL LIST OF SORTED RECTANGLE CANDIDATES",app.listOfSixLists)
+    #print("end of SORTED candidates")
 
     #for region in app.regions:
     #    print(region)
