@@ -3,16 +3,40 @@ predict a single character with various methods
 """
 import cv2
 import numpy as np
+from matplotlib import pyplot as plt
 
 class Classifier():
-    def __init__(self, npImage=None, svmFileName=None):
+    def __init__(self, npImage=None, svmFileName=None, sizeX=12, sizeY=18):
         if svmFileName is not None:
             self.svm = cv2.ml.SVM_load(svmFileName)
         self.img = npImage  # image as numpy array
+        self.sizeX = sizeX
+        self.sizeY = sizeY
 
-    def preprocess_hog(self, sizeX=12, sizeY=18):
+    def deskew(self, img):
+
+        m = cv2.moments(img)
+        if abs(m['mu02']) < 1e-2:
+            return img.copy()
+        skew = m['mu11']/m['mu02']
+        M = np.float32([[1, skew, -0.5*self.sizeX*skew], [0, 1, 0]])
+        img = cv2.warpAffine(img, M, (self.sizeX, self.sizeY), flags=cv2.WARP_INVERSE_MAP | cv2.INTER_LINEAR)
+        plt.imshow(img)
+        plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+        plt.show()
+
+        return img
+
+
+    def preprocess_simple(self):
         self.sample = None
-        resized = cv2.resize(self.img,(sizeX, sizeY))
+        resized = cv2.resize(self.img,(self.sizeX, self.sizeY))
+        self.sample = np.reshape(resized, (-1, self.sizeX*self.sizeY)).astype(np.float32)/255.0
+
+    def preprocess_hog(self):
+        self.sample = None
+        resized = cv2.resize(self.img,(self.sizeX, self.sizeY))
+        resized = self.deskew(resized)
         gx = cv2.Sobel(resized, cv2.CV_32F, 1, 0)
         gy = cv2.Sobel(resized, cv2.CV_32F, 0, 1)
         mag, ang = cv2.cartToPolar(gx, gy)
@@ -44,8 +68,9 @@ class Classifier():
 
 if __name__ == '__main__':
     import sys
-    app = Classifier(svmFileName='/home/mka/PycharmProjects/TrainSVM/Binary/SvmDir/digits_svm.dat')
+    #app = Classifier(svmFileName='/home/mka/PycharmProjects/TrainSVM/Binary/SvmDir/digits_svm.dat')
+    app = Classifier(svmFileName='/home/mka/PycharmProjects/TrainSVM/Characters/SvmDir/digits_svm.dat')
     app.setImageFromFile(imageFileName=sys.argv[1])
-    app.preprocess_hog()
+    app.preprocess_simple()
     app.get_character_by_SVM()
 

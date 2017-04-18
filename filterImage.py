@@ -37,6 +37,9 @@ class FilterImage():
     def getClone(self):
         return self.img.copy()
 
+    def getFiltered(self):
+        return self.filtered.copy()
+
     def reduce_colors(self, img, n):
         Z = img.reshape((-1, 3))
 
@@ -91,6 +94,7 @@ class FilterImage():
 
     def filterAdptiveThreshold(self):
         """http://docs.opencv.org/trunk/d7/d4d/tutorial_py_thresholding.html"""
+
         img = cv2.medianBlur(self.filtered.copy(),1)
         #ret,th1 = cv2.threshold(img,127,255,cv2.THRESH_BINARY)
         #th2 = cv2.adaptiveThreshold(img,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
@@ -170,6 +174,13 @@ class FilterImage():
         #self.filtered = cv2.morphologyEx(self.filtered, cv2.MORPH_OPEN, kernel)
         #self.filtered = cv2.morphologyEx(self.filtered, cv2.MORPH_CLOSE, kernel)
 
+    def histogram(self):
+        """calculate histogram based on sum over x-values of the image"""
+        y=np.sum(self.getClone(),axis=1)
+        plt.hist(y, bins='auto')  # plt.hist passes it's arguments to np.histogram
+        plt.title("Histogram with 'auto' bins")
+        plt.show()
+
     def showOriginalAndFiltered(self):
         """ show original and filtered image"""
 
@@ -194,11 +205,12 @@ if __name__ == '__main__':
     import sys
     app = FilterImage()
     app.setImageFromFile(imageFileName=sys.argv[1])
+    #app.histogram()
     app.erosion()
     #app.sharpen2()
     #app.inPaint()
     #app.deBlur()
-    #app.filterAdptiveThreshold()
+    app.filterAdptiveThreshold()
     #app.filterOtsu()
     #app.filterOtsuManual()
     #app.cleanImage()

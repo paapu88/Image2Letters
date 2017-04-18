@@ -45,6 +45,15 @@ class FilterCharacterRegions(InitialCharacterRegions):
         self.imageY = self.img.shape[0]
         self.imageX = self.img.shape[1]
 
+    def reset(self, npImage=None):
+        self.img = npImage  # image as numpy array
+        self.regions = None
+        if npImage is not None:
+            self.imageY = self.img.shape[0]
+            self.imageX = self.img.shape[1]
+        self.listOfSixSets = []   # list of sets, each set has 6 rectangles
+        self.listOfSixLists = None   # list of lists, each set has 6 rectangles
+
 
     def getClone(self):
         return self.img.copy()
@@ -245,6 +254,127 @@ class FilterCharacterRegions(InitialCharacterRegions):
         """ give Final result of character regions for a plate ordered from left to right"""
         return self.listOfSixLists
 
+    def getCharacterRegion(self):
+        """return the area of six chacters/digits"""
+        print(self.listOfSixLists)
+        print(self.listOfSixLists[0][0][0])
+        x1 = self.listOfSixLists[0][0][0]
+        x2 = self.listOfSixLists[0][5][0] + self.listOfSixLists[0][5][2]
+        y1 = min(self.listOfSixLists[0][0][1], self.listOfSixLists[0][5][1])
+        y2 = max(self.listOfSixLists[0][0][1] + self.listOfSixLists[0][0][3],
+                 self.listOfSixLists[0][5][1] + self.listOfSixLists[0][5][3])
+        area = self.getClone()[y1:y2, x1:x2]
+        #cv2.imshow('Final Rectangles', area)
+        #while(cv2.waitKey()!=ord('q')):
+        #    continue
+        return area
+
+    def descew(self, area):
+        # convert the image to grayscale and flip the foreground
+        # and background to ensure foreground is now "white" and
+        # the background is "black"
+        #gray = cv2.cvtColor(area, cv2.COLOR_BGR2GRAY)
+        gray = cv2.bitwise_not(area)
+
+        # threshold the image, setting all foreground pixels to
+        # 255 and all background pixels to 0
+        thresh = cv2.threshold(gray, 0, 255,
+            cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        # grab the (x, y) coordinates of all pixel values that
+        # are greater than zero, then use these coordinates to
+        # compute a rotated bounding box that contains all
+        # coordinates
+        coords = np.column_stack(np.where(thresh > 0))
+        angle = cv2.minAreaRect(coords)[-1]
+
+        # the `cv2.minAreaRect` function returns values in the
+        # range [-90, 0); as the rectangle rotates clockwise the
+        # returned angle trends to 0 -- in this special case we
+        # need to add 90 degrees to the angle
+        if angle < -45:
+            angle = -(90 + angle)
+
+        # otherwise, just take the inverse of the angle to make
+        # it positive
+        else:
+            angle = -angle
+
+            # rotate the image to deskew it
+        (h, w) = area.shape[:2]
+        center = (w // 2, h // 2)
+        M = cv2.getRotationMatrix2D(center, angle, 1.0)
+        rotated = cv2.warpAffine(area, M, (w, h),
+            flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+
+        # draw the correction angle on the image so we can validate it
+        cv2.putText(rotated, "Angle: {:.2f} degrees".format(angle),
+            (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+        # show the output image
+        print("[INFO] angle: {:.3f}".format(angle))
+        cv2.imshow("Input", area)
+        cv2.imshow("Rotated", rotated)
+        cv2.waitKey(0)
+        return rotated
+
+    def descew_histo(selfself, area):
+        """ descew based on maximising standard deviation"""
+
+        from filterImage import FilterImage
+        from scipy import interpolate
+
+        gray = cv2.bitwise_not(area)
+
+        # threshold the image, setting all foreground pixels to
+        # 255 and all background pixels to 0
+        thresh = cv2.threshold(gray, 0, 255,
+            cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+
+        rows,cols = thresh.shape
+        weights = []; angles=[]
+        clone=thresh.copy()
+        #rotate image
+        for angle in np.linspace(-5, 5, 11):
+            M = cv2.getRotationMatrix2D((cols/2,rows/2),angle,1)
+            dst = cv2.warpAffine(clone,M,(cols,rows),borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+            hist=np.sum(dst,axis=1)[::-1]
+            print(angle, np.var(hist))
+            angles.append(angle)
+            weights.append(np.var(hist))
+            xhist = np.arange(len(hist))
+            #fig = plt.figure()
+            #a = fig.add_subplot(1, 2, 1)
+            #plt.imshow(dst, cmap='gray', interpolation='bicubic')
+            #a.set_title('Rotated ' + str(angle))
+            #a = fig.add_subplot(1, 2, 2)
+            #plt.plot(xhist, hist)
+            #plt.title("H"+str(np.var(hist)))
+            #plt.show()
+
+        print("AW ", angles, weights)
+        #weights=weights-np.min(weights)
+        #angle = np.average(a=angles, axis=0, weights=weights)
+        f = interpolate.interp1d(angles, weights)
+        angles_tight = np.linspace(-5, 5, 101)
+        faas = f(angles_tight)
+        for myas,fs in zip(angles_tight,faas):
+            print(myas,fs)
+        angle=angles_tight[np.argmax(faas)]
+        #for angle in np.linspace(-5, 5, 101):
+        #    print(f(-2),f(3.5))
+        #angle = max(f)
+        print("ANGLE", angle)
+        #self.angles.append(angle)
+        #
+        #print(len(xhist))
+        M = cv2.getRotationMatrix2D((cols/2,rows/2),angle,1)
+        dst = cv2.warpAffine(area,M,(cols,rows))
+        plt.imshow(dst, cmap = 'gray', interpolation = 'bicubic')
+        #plt.imshow(dst, cmap='gray', interpolation='bicubic')
+        plt.show()
+        return area
+
+
     def imageToPlatesWithCharacterRegions(self):
         """from a given numpy array representing the image possibly containing licence plate(s),
         returns a list of possible plates
@@ -284,9 +414,11 @@ if __name__ == '__main__':
     app = FilterCharacterRegions()
     app.setImageFromFile(imageFileName=sys.argv[1])
     app.plateChars2CharacterRegions()
-    app.writeFinalRectangles()
-    app.showFinalRectangles()
-    sys.exit()
+    #app.writeFinalRectangles()
+    #app.showFinalRectangles()
+    area = app.getCharacterRegion()
+    area=app.descew_histo(area)
+    app.reset(area)
 
     #app.cleanImage()
     app.getInitialRegionsMser()

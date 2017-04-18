@@ -36,6 +36,8 @@ class DetectPlate():
         self.img = None
         self.gray = None
         self.plates = None
+        self.rotation_angles = None # for each plate, an optimal rotation angle of the whole image
+        self.rotation_centers = None # for each plate, center of rotation
         self.npPlates = []  #images of plate(s) as array of numpy arrays
 
     def image2Plates(self):
@@ -79,25 +81,99 @@ class DetectPlate():
 
 
     def showPlates(self):
-        self.image2Plates()
-        clone = self.getGray().copy()
+        #self.image2Plates()
+
+
         for i, [x,y,w,h] in enumerate(self.plates):
-            print("xywh",x,y,w,h)
+            clone = self.getGray()
+            rows,cols = clone.shape
+            if self.rotation_angles is not None:
+                M = cv2.getRotationMatrix2D(self.rotation_centers[i],self.rotation_angles[i],1)
+                clone = cv2.warpAffine(clone,M,(cols,rows))
+            print("xywh-rot",x,y,w,h,self.rotation_centers[i],self.rotation_angles[i])
             cv2.rectangle(clone,(x,y),(x+w,y+h),(0,255,0),5)
-        plt.imshow(clone, cmap = 'gray', interpolation = 'bicubic')
-        #plt.imshow(clone)
-        plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
-        plt.show()
+            plt.imshow(clone, cmap = 'gray', interpolation = 'bicubic')
+            #plt.imshow(clone)
+            plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+            plt.show()
         #cv2.imshow('clone', clone)
         #while(cv2.waitKey()!=ord('q')):
         #    continue
 
-
-    def writePlates(self, name=None):
+    def rotate(self):
+        """rotate image so that we get weighted maximum of sum over x-sum-values of the plate"""
+        from filterImage import FilterImage
+        from scipy import interpolate
         self.image2Plates()
-        clone = self.getGray().copy()
+        img = cv2.medianBlur(self.getGray(),1)
+        #ret,th1 = cv2.threshold(img,127,255,cv2.THRESH_BINARY)
+        #th2 = cv2.adaptiveThreshold(img,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
+        #cv2.THRESH_BINARY,11,2)
+        thresh = cv2.adaptiveThreshold(img,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
+            cv2.THRESH_BINARY,11,2)
+
+        rows,cols = thresh.shape
+        clone = thresh
+        #app = FilterImage(clone)
+        #app.filterAdptiveThreshold()
+        #clone = app.getFiltered()
+        rows,cols = clone.shape
+        self.rotation_angles = []
+        self.rotation_centers = []
         for i, [x,y,w,h] in enumerate(self.plates):
             print("xywh",x,y,w,h)
+            weights = []; angles=[]
+            #rotate image
+            for angle in np.linspace(-5, 5, 11):
+                M = cv2.getRotationMatrix2D((x+0.5*w,y+0.5*h),angle,1)
+                dst = cv2.warpAffine(clone,M,(cols, rows))
+                hist=np.sum(dst[y:y+h,x:x+w],axis=1)[::-1]
+                print(angle, np.var(hist))
+                angles.append(angle)
+                weights.append(np.var(hist))
+
+                #xhist = np.arange(len(hist))
+                #fig = plt.figure()
+                #a = fig.add_subplot(1, 2, 1)
+                #cv2.rectangle(dst, (x, y), (x + w, y + h), (0, 255, 0), 5)
+                #plt.imshow(dst[y:y+h,x:x+w], cmap = 'gray', interpolation = 'bicubic')
+                #plt.imshow(dst, cmap='gray', interpolation='bicubic')
+                #a.set_title('Rotated ' + str(angle))
+                #a = fig.add_subplot(1, 2, 2)
+                #plt.plot(hist, xhist)
+                #plt.title("H"+str(np.var(hist)))
+                #plt.show()
+
+
+
+            f = interpolate.interp1d(angles, weights)
+            angles_tight = np.linspace(-5, 5, 101)
+            faas = f(angles_tight)
+            angle=angles_tight[np.argmax(faas)]
+            self.rotation_angles.append(angle)
+            self.rotation_centers.append((x+0.5*w,y+0.5*h))
+            M = cv2.getRotationMatrix2D((x+0.5*w,y+0.5*h),angle,1)
+            dst = cv2.warpAffine(clone,M,(cols,rows))
+            cv2.rectangle(dst, (x, y), (x + w, y + h), (0, 255, 0), 5)
+            plt.imshow(dst[y:y+h,x:x+w], cmap = 'gray', interpolation = 'bicubic')
+            plt.show()
+
+    def get_rotation_angles(self):
+        return self.rotation_angles
+
+    def get_rotation_centers(self):
+        return self.rotation_centers
+
+
+    def writePlates(self, name=None):
+
+        for i, [x,y,w,h] in enumerate(self.plates):
+            clone = self.getGray()
+            rows,cols = clone.shape
+            if self.rotation_angles is not None:
+                M = cv2.getRotationMatrix2D(self.rotation_centers[i],self.rotation_angles[i],1)
+                clone = cv2.warpAffine(clone,M,(cols,rows))
+                print("xywhWrite",x,y,w,h,self.rotation_centers[i],self.rotation_angles[i])
             roi_gray = clone[y:y+h, x:x+w]
             if name is None:
                 cv2.imwrite(str(i)+'-'+'plate'+'-'+sys.argv[1]+'.tif', roi_gray)
@@ -111,6 +187,7 @@ if __name__ == '__main__':
         app = DetectPlate(imageFileName=imageFileName,
                         trainedHaarFileName='/home/mka/PycharmProjects/Rekkari/rekkari.xml',
                         detectFactor=1)
+        app.rotate()
         app.writePlates(name='plateOnly-'+sys.argv[1])
         app.showPlates()
 
