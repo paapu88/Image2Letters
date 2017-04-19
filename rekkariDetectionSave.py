@@ -55,8 +55,9 @@ class DetectPlate():
             plates.append([x,y,w,h])
         self.plates = plates
 
-    def image2PlateNumpyArrays(self):
-        """ from image, produce rectangle(s) that contain possible plate,
+    def image2PlateNumpyArrays(self, rotate=True):
+        """ if rotate is true, try to make plates horizontal
+        from image, produce rectangle(s) that contain possible plate,
         output as list of numpy array(s) representing gray scale images(s) about possible plates"""
         if not os.path.isfile(self.imageFileName):
             raise FileNotFoundError('NO imagefile with name: ' + self.imageFileName)
@@ -67,6 +68,10 @@ class DetectPlate():
         self.gray = cv2.cvtColor(self.img.copy(), self.colorConversion)
         rectangles = self.cascade.detectMultiScale(self.gray, self.scaleFactor, self.detectFactor, minSize=self.minSize)
         for [x,y,w,h] in rectangles:
+            if rotate:
+                gray = self.rotatePlate(rectangle=[x,y,w,h])
+            else:
+                gray = self.gray
             roi_gray = self.gray[y:y+h, x:x+w]
             self.npPlates.append(roi_gray)
 
@@ -80,17 +85,18 @@ class DetectPlate():
         return self.gray.copy()
 
 
-    def showPlates(self):
-        #self.image2Plates()
+    def showPlates(self, rotate=True):
+        """show plates (unrotated) """
 
-
+        self.image2Plates()
+        if rotate:
+            self.getRotationAnglesCenters()
         for i, [x,y,w,h] in enumerate(self.plates):
             clone = self.getGray()
             rows,cols = clone.shape
             if self.rotation_angles is not None:
                 M = cv2.getRotationMatrix2D(self.rotation_centers[i],self.rotation_angles[i],1)
                 clone = cv2.warpAffine(clone,M,(cols,rows))
-            print("xywh-rot",x,y,w,h,self.rotation_centers[i],self.rotation_angles[i])
             cv2.rectangle(clone,(x,y),(x+w,y+h),(0,255,0),5)
             plt.imshow(clone, cmap = 'gray', interpolation = 'bicubic')
             #plt.imshow(clone)
@@ -100,23 +106,47 @@ class DetectPlate():
         #while(cv2.waitKey()!=ord('q')):
         #    continue
 
-    def rotate(self):
+
+    def rotatePlate(self, rectangle):
+        """rotate single plate to make letters and digits horizontal"""
+        from scipy import interpolate
+        img = cv2.medianBlur(self.getGray(),1)
+        thresh = cv2.adaptiveThreshold(img,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
+            cv2.THRESH_BINARY,11,2)
+
+        clone = thresh
+        rows,cols = clone.shape
+        [x,y,w,h] = rectangle
+        print("xywh",x,y,w,h)
+        #rotate image
+        weights = []; angles=[]
+        for angle in np.linspace(-5, 5, 11):
+            M = cv2.getRotationMatrix2D((x+0.5*w,y+0.5*h),angle,1)
+            dst = cv2.warpAffine(clone,M,(cols, rows))
+            hist=np.sum(dst[y:y+h,x:x+w],axis=1)[::-1]
+            angles.append(angle)
+            weights.append(np.var(hist))
+
+
+        f = interpolate.interp1d(angles, weights)
+        angles_tight = np.linspace(-5, 5, 101)
+        faas = f(angles_tight)
+        angle=angles_tight[np.argmax(faas)]
+        M = cv2.getRotationMatrix2D((x+0.5*w,y+0.5*h),angle,1)
+        dst = cv2.warpAffine(clone,M,(cols,rows))
+        return dst
+
+
+
+    def getRotationAnglesCenters(self):
         """rotate image so that we get weighted maximum of sum over x-sum-values of the plate"""
         from filterImage import FilterImage
         from scipy import interpolate
         self.image2Plates()
         img = cv2.medianBlur(self.getGray(),1)
-        #ret,th1 = cv2.threshold(img,127,255,cv2.THRESH_BINARY)
-        #th2 = cv2.adaptiveThreshold(img,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
-        #cv2.THRESH_BINARY,11,2)
         thresh = cv2.adaptiveThreshold(img,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
             cv2.THRESH_BINARY,11,2)
-
-        rows,cols = thresh.shape
         clone = thresh
-        #app = FilterImage(clone)
-        #app.filterAdptiveThreshold()
-        #clone = app.getFiltered()
         rows,cols = clone.shape
         self.rotation_angles = []
         self.rotation_centers = []
@@ -187,7 +217,7 @@ if __name__ == '__main__':
         app = DetectPlate(imageFileName=imageFileName,
                         trainedHaarFileName='/home/mka/PycharmProjects/Rekkari/rekkari.xml',
                         detectFactor=1)
-        app.rotate()
+        app.getRotationAnglesCenters()
         app.writePlates(name='plateOnly-'+sys.argv[1])
         app.showPlates()
 

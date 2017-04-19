@@ -11,6 +11,7 @@ from filterImage import FilterImage
 from filterCharacterRegions import FilterCharacterRegions
 from initialCharacterRegions import InitialCharacterRegions
 from myTesseract import MyTesseract
+from myClassifier import Classifier
 import glob
 
 # image to plate(s)
@@ -24,6 +25,8 @@ for file in files:
     app1 = DetectPlate(imageFileName=file)
     plates = app1.getNpPlates()
     app1.showPlates()
+
+    app1.writePlates(name='plateOnly-'+sys.argv[1])
     print(file+' number of plates found '+ str(len(plates)))
 
     for plate in plates:
@@ -33,12 +36,10 @@ for file in files:
         app3 = FilterCharacterRegions(npImage=plate)
         platesWithCharacterRegions = app3.imageToPlatesWithCharacterRegions()
 
-        app5 = MyTesseract()
+        app5 = Classifier()  #binary
         app5.setImage(plate)
         #app3.showImage()
-        app5.defineSixPlateCharacters(platesWithCharacterRegions,lang='eng')
-        print("PLATE, confidence, char conf:", \
-              app5.getFinalString(), \
-              app5.getFinalPlateConfidence(), \
-              app5.getFinalCharacterConfidences() )
+        app5.defineSixPlateCharacters(platesWithCharacterRegions)
+        print("PLATE,  chars :", app5.getFinalString())
+
 
