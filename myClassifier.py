@@ -69,8 +69,8 @@ class Classifier():
 if __name__ == '__main__':
     import sys
     #app = Classifier(svmFileName='/home/mka/PycharmProjects/TrainSVM/Binary/SvmDir/digits_svm.dat')
-    app = Classifier(svmFileName='/home/mka/PycharmProjects/TrainSVM/Characters/SvmDir/digits_svm.dat')
+    app = Classifier(svmFileName=sys.argv[2])
     app.setImageFromFile(imageFileName=sys.argv[1])
-    app.preprocess_simple()
+    app.preprocess_hog()
     app.get_character_by_SVM()
 
