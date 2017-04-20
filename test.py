@@ -36,8 +36,7 @@ for file in files:
         app3 = FilterCharacterRegions(npImage=plate)
         platesWithCharacterRegions = app3.imageToPlatesWithCharacterRegions()
 
-        app5 = Classifier()  #binary
-        app5.setImage(plate)
+        app5 = Classifier(npImage=plate)
         #app3.showImage()
         app5.defineSixPlateCharacters(platesWithCharacterRegions)
         print("PLATE,  chars :", app5.getFinalString())

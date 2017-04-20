@@ -6,25 +6,35 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 class Classifier():
-    def __init__(self, npImage=None, svmFileName=None, sizeX=12, sizeY=18):
+    def __init__(self, npImage=None, svmFileName=None, dictionaryFile=None, sizeX=12, sizeY=18):
+        self.asciiDict = {}
         if svmFileName is not None:
-            self.svm = cv2.ml.SVM_load(svmFileName)
+            self.setSvmTrainedFile(svmFileName=svmFileName)
+        if dictionaryFile is not None:
+            self.setSvmDictionary(dictionaryFile=dictionaryFile)
         self.img = npImage  # image as numpy array
         self.sizeX = sizeX
         self.sizeY = sizeY
-        self.asciiDict = {}
         self.plateString = None
+        self.plateStrings = []
 
-    def setImage(self, image):
+    def setNumpyImage(self, image):
         """
         set image from numpy array
         """
-        from PIL import Image
-        self.img = Image.fromarray(image)
+        self.img = image
 
-    def setCharacter(self, rectangle):
-        (x,y,w,h) = rectangle
-        self.char = self.img.copy()[y:y+h,x:x+w]
+    def setCharacter(self, rectangle=None):
+        if rectangle is None:
+            self.char = self.img.copy()
+        else:
+            (x,y,w,h) = rectangle
+            self.char = self.img.copy()[y:y+h,x:x+w]
+
+    def showCharacter(self):
+        plt.imshow(self.char, cmap = 'gray', interpolation = 'bicubic')
+        plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+        plt.show()
 
     def setImageFromFile(self, imageFileName, colorConversion=cv2.COLOR_BGR2GRAY):
         """ for debuggin image can be read from file also"""
@@ -49,17 +59,29 @@ class Classifier():
 
 
     def deskew(self, img):
-
-        m = cv2.moments(img)
+        """ descew from
+        http://codingexodus.blogspot.fi/2013/06/moment-based-de-skewing.html
+        """
+        SZ=max(self.sizeX, self.sizeY)
+        SZ2=int(round(SZ))
+        resized = cv2.resize(img,(SZ, SZ))
+        m = cv2.moments(resized)
         if abs(m['mu02']) < 1e-2:
             return img.copy()
         skew = m['mu11']/m['mu02']
-        M = np.float32([[1, skew, -0.5*self.sizeX*skew], [0, 1, 0]])
-        img = cv2.warpAffine(img, M, (self.sizeX, self.sizeY), flags=cv2.WARP_INVERSE_MAP | cv2.INTER_LINEAR)
-        plt.imshow(img)
+        M = np.float32([[1, skew, -0.5*SZ*skew], [0, 1, 0]])
+        resized = cv2.warpAffine(resized,M,(SZ2, SZ2),flags=cv2.WARP_INVERSE_MAP|cv2.INTER_LINEAR)
+        rotatedImg=cv2.resize(resized,(self.sizeX, self.sizeY))
+
+        plt.imshow(rotatedImg, cmap = 'gray', interpolation = 'bicubic')
         plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
         plt.show()
+        return rotatedImg
 
+    def noSkew(self, img):
+        plt.imshow(img, cmap = 'gray', interpolation = 'bicubic')
+        plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+        plt.show()
         return img
 
 
@@ -71,7 +93,7 @@ class Classifier():
     def preprocess_hog(self):
         self.sample = None
         resized = cv2.resize(self.char,(self.sizeX, self.sizeY))
-        resized = self.deskew(resized)
+        #resized = self.noSkew(resized)
         gx = cv2.Sobel(resized, cv2.CV_32F, 1, 0)
         gy = cv2.Sobel(resized, cv2.CV_32F, 0, 1)
         mag, ang = cv2.cartToPolar(gx, gy)
@@ -93,23 +115,28 @@ class Classifier():
 
 
 
-    def get_character_by_SVM(self):
+    def get_character_by_SVM(self, binary=False):
         self.preprocess_hog()
         ret, resp = self.svm.predict(self.sample)
         print (ret, resp)
-        label = str(int(round(resp)))
-        mychar = str(chr(self.asciiDict[label]))
-        return mychar
+        #resp=self.svm.predict(self.sample,True)
+        #print("prob:", resp)
+        label = int(round(resp.flatten()[0]))
+        if binary:
+            return label
+        else:
+            mychar = str(chr(self.asciiDict[str(label)]))
+            return mychar
 
     def defineSixPlateCharacters(self, listOfListofRectangles,
                                  lettersSvmFile='/home/mka/PycharmProjects/TrainSVM/Letters/SvmDir/digits_svm.dat',
                                  lettersDictionaryFile='/home/mka/PycharmProjects/TrainSVM/Letters/SvmDir/allSVM.txt.dict',
                                  digitsSvmFile='/home/mka/PycharmProjects/TrainSVM/Digits/SvmDir/digits_svm.dat',
-                                 digitsDictionaryFile='/home/mka/PycharmProjects/TrainSVM/Digits/SvmDir/allSVM.txt.dict'):
+                                 digitsDictionaryFile='/home/mka/PycharmProjects/TrainSVM/Digits/SvmDir/allSVM.txt.dict',
+                                 binarySvmFile='/home/mka/PycharmProjects/TrainSVM/Binary/SvmDir/digits_svm.dat'):
 
-        if len(listOfListofRectangles) > 1:
-            raise NotImplementedError("in Classifier, defineSixPlateCharacters, only one set of six characters allowed")
 
+        # if there are more thatn one candidate for 6-chars, we predict them all...
         for plate in listOfListofRectangles:
             if len(plate) != 6:
                 raise RuntimeError('only six character plates allowed in getSixPlateCharacters')
@@ -128,6 +155,7 @@ class Classifier():
                 string = string + self.get_character_by_SVM()
             self.plateString = (string[0:3]+'-'+string[3:6])
             print(self.plateString)
+            self.plateStrings.append(self.plateString)
 
     def getFinalString(self):
         return self.plateString
@@ -135,8 +163,10 @@ class Classifier():
 if __name__ == '__main__':
     import sys
     #app = Classifier(svmFileName='/home/mka/PycharmProjects/TrainSVM/Binary/SvmDir/digits_svm.dat')
-    app = Classifier(svmFileName=sys.argv[2])
+    app = Classifier(svmFileName='/home/mka/PycharmProjects/TrainSVM/Binary/SvmDir/digits_svm.dat',
+                     dictionaryFile='/home/mka/PycharmProjects/TrainSVM/Digits/SvmDir/allSVM.txt.dict')
     app.setImageFromFile(imageFileName=sys.argv[1])
+    app.setCharacter()
     #app.preprocess_hog()
-    app.get_character_by_SVM()
+    print("result:",app.get_character_by_SVM())
 

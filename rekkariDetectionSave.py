@@ -117,7 +117,7 @@ class DetectPlate():
         clone = thresh
         rows,cols = clone.shape
         [x,y,w,h] = rectangle
-        print("xywh",x,y,w,h)
+        #print("xywh",x,y,w,h)
         #rotate image
         weights = []; angles=[]
         for angle in np.linspace(-5, 5, 11):
@@ -151,14 +151,14 @@ class DetectPlate():
         self.rotation_angles = []
         self.rotation_centers = []
         for i, [x,y,w,h] in enumerate(self.plates):
-            print("xywh",x,y,w,h)
+            #print("xywh",x,y,w,h)
             weights = []; angles=[]
             #rotate image
             for angle in np.linspace(-5, 5, 11):
                 M = cv2.getRotationMatrix2D((x+0.5*w,y+0.5*h),angle,1)
                 dst = cv2.warpAffine(clone,M,(cols, rows))
                 hist=np.sum(dst[y:y+h,x:x+w],axis=1)[::-1]
-                print(angle, np.var(hist))
+                #print(angle, np.var(hist))
                 angles.append(angle)
                 weights.append(np.var(hist))
 
