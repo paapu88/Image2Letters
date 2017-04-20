@@ -1,8 +1,6 @@
 """
-test getting string of characters of a licence plate
-
-cd  /home/mka/PycharmProjects/Image2Letters/test.py
-python3 /home/mka/PycharmProjects/Image2Letters/test.py "*.jpg"
+Trying to apply twice haar detection to a plate to narrow down the character region only
+DID NOT SUCCEED
 """
 import sys
 

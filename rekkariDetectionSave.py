@@ -17,7 +17,7 @@ import os
 class DetectPlate():
 
     def __init__(self, trainedHaarFileName='/home/mka/PycharmProjects/Image2Letters/rekkari.xml',
-                imageFileName=None,
+                npImage=None, imageFileName=None,
                 detectFactor=5, scaleFactor=1.03, minSize=(5,18),
                 colorConversion=cv2.COLOR_BGR2GRAY,
                 imageXfactor=None, imageYfactor=None):
@@ -31,9 +31,7 @@ class DetectPlate():
         self.scaleFactor = scaleFactor
         self.minSize = minSize
         self.colorConversion = colorConversion
-        self.imageXfactor = imageXfactor  # scale image x dimension by this
-        self.imageYfactor = imageYfactor  # scale image x dimension by this
-        self.img = None
+        self.img = npImage  # image as numpy array
         self.gray = None
         self.plates = None
         self.rotation_angles = None # for each plate, an optimal rotation angle of the whole image
@@ -42,12 +40,14 @@ class DetectPlate():
 
     def image2Plates(self):
         """ from image, produce rectangle(s) that contain possible plate, output as list of rectanges"""
-        if not os.path.isfile(self.imageFileName):
-            raise FileNotFoundError('NO imagefile with name: ' + self.imageFileName)
-        self.img = cv2.imread(self.imageFileName)
-        if self.imageXfactor is not None:
-            self.img = cv2.resize(self.img,None,fx=self.imageXfactor, fy=self.imageYfactor)
-        self.gray = cv2.cvtColor(self.img.copy(), self.colorConversion)
+        if self.img is None:
+            if not os.path.isfile(self.imageFileName):
+                raise FileNotFoundError('NO imagefile with name: ' + self.imageFileName)
+            self.img = cv2.imread(self.imageFileName)
+        if len(self.img.shape)> 2:
+            self.gray = cv2.cvtColor(self.img.copy(), self.colorConversion)
+        else:
+            self.gray = self.img.copy()
         rectangles = self.cascade.detectMultiScale(self.gray, self.scaleFactor, self.detectFactor, minSize=self.minSize)
         plates = []
         for [x,y,w,h] in rectangles:
@@ -59,13 +59,15 @@ class DetectPlate():
         """ if rotate is true, try to make plates horizontal
         from image, produce rectangle(s) that contain possible plate,
         output as list of numpy array(s) representing gray scale images(s) about possible plates"""
-        if not os.path.isfile(self.imageFileName):
-            raise FileNotFoundError('NO imagefile with name: ' + self.imageFileName)
+        if self.img is None:
+            if not os.path.isfile(self.imageFileName):
+                raise FileNotFoundError('NO imagefile with name: ' + self.imageFileName)
+            self.img = cv2.imread(self.imageFileName)
         self.npPlates = []
-        self.img = cv2.imread(self.imageFileName)
-        if self.imageXfactor is not None:
-            self.img = cv2.resize(self.img,None,fx=self.imageXfactor, fy=self.imageYfactor)
-        self.gray = cv2.cvtColor(self.img.copy(), self.colorConversion)
+        if len(self.img.shape)> 2:
+            self.gray = cv2.cvtColor(self.img.copy(), self.colorConversion)
+        else:
+            self.gray = self.img.copy()
         rectangles = self.cascade.detectMultiScale(self.gray, self.scaleFactor, self.detectFactor, minSize=self.minSize)
         for [x,y,w,h] in rectangles:
             if rotate:
@@ -80,14 +82,11 @@ class DetectPlate():
         self.image2PlateNumpyArrays()
         return self.npPlates
 
-
     def getGray(self):
         return self.gray.copy()
 
-
     def showPlates(self, rotate=True):
-        """show plates (unrotated) """
-
+        """show plates """
         self.image2Plates()
         if rotate:
             self.getRotationAnglesCenters()
@@ -102,47 +101,45 @@ class DetectPlate():
             #plt.imshow(clone)
             plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
             plt.show()
-        #cv2.imshow('clone', clone)
-        #while(cv2.waitKey()!=ord('q')):
-        #    continue
 
 
-    def rotatePlate(self, rectangle):
+    def rotatePlate(self, rectangle, minAng=-10, maxAng=10):
         """rotate single plate to make letters and digits horizontal"""
         from scipy import interpolate
         img = cv2.medianBlur(self.getGray(),1)
         thresh = cv2.adaptiveThreshold(img,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
             cv2.THRESH_BINARY,11,2)
 
+        angles_iter = np.linspace(minAng, maxAng, int(round(abs(maxAng)+abs(minAng)+1)))
+        angles_many_iter = np.linspace(minAng, maxAng, 1+10*int(round(abs(maxAng)+abs(minAng))))
         clone = thresh
         rows,cols = clone.shape
         [x,y,w,h] = rectangle
         #print("xywh",x,y,w,h)
         #rotate image
         weights = []; angles=[]
-        for angle in np.linspace(-5, 5, 11):
+        for angle in angles_iter:
             M = cv2.getRotationMatrix2D((x+0.5*w,y+0.5*h),angle,1)
             dst = cv2.warpAffine(clone,M,(cols, rows))
             hist=np.sum(dst[y:y+h,x:x+w],axis=1)[::-1]
             angles.append(angle)
             weights.append(np.var(hist))
 
-
         f = interpolate.interp1d(angles, weights)
-        angles_tight = np.linspace(-5, 5, 101)
-        faas = f(angles_tight)
-        angle=angles_tight[np.argmax(faas)]
+        faas = f(angles_many_iter)
+        angle=angles_many_iter[np.argmax(faas)]
         M = cv2.getRotationMatrix2D((x+0.5*w,y+0.5*h),angle,1)
         dst = cv2.warpAffine(clone,M,(cols,rows))
         return dst
 
 
-
-    def getRotationAnglesCenters(self):
+    def getRotationAnglesCenters(self, minAng=-10, maxAng=10):
         """rotate image so that we get weighted maximum of sum over x-sum-values of the plate"""
         from filterImage import FilterImage
         from scipy import interpolate
         self.image2Plates()
+        angles_iter = np.linspace(minAng, maxAng, int(round(abs(maxAng)+abs(minAng)+1)))
+        angles_many_iter = np.linspace(minAng, maxAng, 1+10*int(round(abs(maxAng)+abs(minAng))))
         img = cv2.medianBlur(self.getGray(),1)
         thresh = cv2.adaptiveThreshold(img,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
             cv2.THRESH_BINARY,11,2)
@@ -154,7 +151,7 @@ class DetectPlate():
             #print("xywh",x,y,w,h)
             weights = []; angles=[]
             #rotate image
-            for angle in np.linspace(-5, 5, 11):
+            for angle in angles_iter:
                 M = cv2.getRotationMatrix2D((x+0.5*w,y+0.5*h),angle,1)
                 dst = cv2.warpAffine(clone,M,(cols, rows))
                 hist=np.sum(dst[y:y+h,x:x+w],axis=1)[::-1]
@@ -174,12 +171,9 @@ class DetectPlate():
                 #plt.title("H"+str(np.var(hist)))
                 #plt.show()
 
-
-
             f = interpolate.interp1d(angles, weights)
-            angles_tight = np.linspace(-5, 5, 101)
-            faas = f(angles_tight)
-            angle=angles_tight[np.argmax(faas)]
+            faas = f(angles_many_iter)
+            angle=angles_many_iter[np.argmax(faas)]
             self.rotation_angles.append(angle)
             self.rotation_centers.append((x+0.5*w,y+0.5*h))
             M = cv2.getRotationMatrix2D((x+0.5*w,y+0.5*h),angle,1)
@@ -196,7 +190,7 @@ class DetectPlate():
 
 
     def writePlates(self, name=None):
-
+        """write each plate to a separate file"""
         for i, [x,y,w,h] in enumerate(self.plates):
             clone = self.getGray()
             rows,cols = clone.shape
@@ -212,7 +206,7 @@ class DetectPlate():
 
 if __name__ == '__main__':
     import sys, glob
-    #app = DetectPlate(imageFileName=sys.argv[1], detectFactor=1)
+
     for imageFileName in glob.glob(sys.argv[1]):
         app = DetectPlate(imageFileName=imageFileName,
                         trainedHaarFileName='/home/mka/PycharmProjects/Rekkari/rekkari.xml',
@@ -221,11 +215,6 @@ if __name__ == '__main__':
         app.writePlates(name='plateOnly-'+sys.argv[1])
         app.showPlates()
 
-        #app = DetectPlate(imageFileName='0-test.jpg',
-        #                trainedHaarFileName='/home/mka/PycharmProjects/Rekkari/character.xml',
-        #                scaleFactor=1.001,detectFactor=0,minSize=(3,5))
-        #app.writePlates()
-        #app.showPlates()
 
 
 

@@ -60,6 +60,8 @@ class FilterImage():
 
 
     def cleanImage(self):
+        """ various trials to clean the image"""
+
         # threshold the warped image, then apply a series of morphological
         # operations to cleanup the thresholded image
         clone = self.filtered.copy()
@@ -87,10 +89,6 @@ class FilterImage():
         # cv2.imwrite('5-mask2.png', mask2)
 
         self.filtered = reduced
-        # plt.imshow(last, cmap = 'gray', interpolation = 'bicubic')
-        # plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
-        # plt.show()
-        # sys.exit()
 
     def filterAdptiveThreshold(self):
         """http://docs.opencv.org/trunk/d7/d4d/tutorial_py_thresholding.html"""
@@ -105,6 +103,9 @@ class FilterImage():
 
 
     def filterOtsuManual(self):
+        """ manually thresholding
+        http://docs.opencv.org/trunk/d7/d4d/tutorial_py_thresholding.html
+        """
         blur = cv2.GaussianBlur(self.filtered.copy(),(3,3),0)
         # find normalized_histogram, and its cumulative distribution function
         hist = cv2.calcHist([blur],[0],None,[256],[0,256])

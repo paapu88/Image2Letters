@@ -1,0 +1,36 @@
+import cv2
+import numpy as np
+from matplotlib import pyplot as plt
+import sys
+
+img = cv2.imread(sys.argv[1], cv2.IMREAD_GRAYSCALE)
+
+def compute_skew(image):
+    gray = cv2.bitwise_not(image)
+ 
+    # threshold the image, setting all foreground pixels to
+    # 255 and all background pixels to 0
+    thresh = cv2.threshold(gray, 0, 255,
+	cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+  
+    return angle / nlines
+
+
+def deskew(image, angle):
+    image = cv2.bitwise_not(image)
+    non_zero_pixels = cv2.findNonZero(image)
+    center, wh, theta = cv2.minAreaRect(non_zero_pixels)
+
+    root_mat = cv2.getRotationMatrix2D(center, angle, 1)
+    rows, cols = image.shape
+    rotated = cv2.warpAffine(image, root_mat, (cols, rows),
+                             flags=cv2.INTER_CUBIC)
+
+    return cv2.getRectSubPix(rotated, (cols, rows), center)
+
+
+
+deskewed_image = deskew(img.copy(), compute_skew(img))
+plt.imshow(deskewed_image)
+plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+plt.show()

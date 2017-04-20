@@ -1,6 +1,6 @@
 """
 INPUT: image file and  list of tuples of six rectangles (many times six tuples possible)
-OUTPUT: list of recognized characters and their probablilities and total prbability of a plate
+OUTPUT: list of recognized characters and their probabilities and total probability of a plate
 
 
 python3 myTesseract.py 0-vkz-825.jpg.tif
@@ -33,7 +33,6 @@ class MyTesseract():
         """
         import numpy as np
         import matplotlib.pyplot
-
         self.img = Image.fromarray(image)
 
 

@@ -15,7 +15,6 @@ class InitialCharacterRegions():
     def __init__(self, npImage=None):
         self.img = npImage  # image as numpy array
         self.mser = cv2.MSER_create(_max_variation=10)
-        print("init of InitialCharacterRegions")
         self.regions = None
         if npImage is not None:
             self.imageY = self.img.shape[0]

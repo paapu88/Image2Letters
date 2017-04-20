@@ -212,7 +212,6 @@ class FilterCharacterRegions(InitialCharacterRegions):
             roi_gray = clone[y:y+h, x:x+w]
             cv2.imwrite(str(i)+'-'+sys.argv[1]+'.tif', roi_gray)
 
-
     def showIntermediateRectangles(self):
         """ show image with current rectangles on it"""
 
@@ -225,9 +224,6 @@ class FilterCharacterRegions(InitialCharacterRegions):
         plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
         plt.show()
 
-        #cv2.imshow('clone', clone)
-        #while(cv2.waitKey()!=ord('q')):
-        #    continue
 
     def writeFinalRectangles(self):
         """ write final rectangles to disk individually """
@@ -270,6 +266,8 @@ class FilterCharacterRegions(InitialCharacterRegions):
         return area
 
     def descew(self, area):
+        """ descew an image based on contours, works for clean images """
+
         # convert the image to grayscale and flip the foreground
         # and background to ensure foreground is now "white" and
         # the background is "black"
@@ -317,7 +315,7 @@ class FilterCharacterRegions(InitialCharacterRegions):
         cv2.waitKey(0)
         return rotated
 
-    def descew_histo(selfself, area):
+    def descew_histo(self, area, minAng=-10, maxAng=10):
         """ descew based on maximising standard deviation"""
 
         from filterImage import FilterImage
@@ -334,7 +332,7 @@ class FilterCharacterRegions(InitialCharacterRegions):
         weights = []; angles=[]
         clone=thresh.copy()
         #rotate image
-        for angle in np.linspace(-5, 5, 11):
+        for angle in np.linspace(minAng, maxAng, int(round(abs(maxAng)+abs(minAng)+1))):
             M = cv2.getRotationMatrix2D((cols/2,rows/2),angle,1)
             dst = cv2.warpAffine(clone,M,(cols,rows),borderMode=cv2.BORDER_CONSTANT, borderValue=0)
             hist=np.sum(dst,axis=1)[::-1]
@@ -355,22 +353,14 @@ class FilterCharacterRegions(InitialCharacterRegions):
         #weights=weights-np.min(weights)
         #angle = np.average(a=angles, axis=0, weights=weights)
         f = interpolate.interp1d(angles, weights)
-        angles_tight = np.linspace(-5, 5, 101)
+        angles_tight = np.linspace(minAng, maxAng, 1+10*int(round(abs(maxAng)+abs(minAng))))
         faas = f(angles_tight)
         for myas,fs in zip(angles_tight,faas):
             print(myas,fs)
         angle=angles_tight[np.argmax(faas)]
-        #for angle in np.linspace(-5, 5, 101):
-        #    print(f(-2),f(3.5))
-        #angle = max(f)
-        print("ANGLE", angle)
-        #self.angles.append(angle)
-        #
-        #print(len(xhist))
         M = cv2.getRotationMatrix2D((cols/2,rows/2),angle,1)
         dst = cv2.warpAffine(area,M,(cols,rows))
         plt.imshow(dst, cmap = 'gray', interpolation = 'bicubic')
-        #plt.imshow(dst, cmap='gray', interpolation='bicubic')
         plt.show()
         return area
 
@@ -416,7 +406,6 @@ if __name__ == '__main__':
     app.plateChars2CharacterRegions()
     app.writeFinalRectangles()
     app.showFinalRectangles()
-    sys.exit()
     area = app.getCharacterRegion()
     area=app.descew_histo(area)
     app.reset(area)
